@@ -172,6 +172,8 @@
 			if(departementCompletion["d" + code] == null) {
 				departementCompletion["d" + code] = 0.0;
 			}
+			departementCompletion["d" + code] = countFoundCities() / totalCities;
+			localStorage.setItem("depcomp", JSON.stringify(departementCompletion));
 			layerGroup = L.geoJSON(jsonData, {
 				style: cityColor,
 				onEachFeature: function (feature, layer) {
