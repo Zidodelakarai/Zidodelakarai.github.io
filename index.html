@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+	<title>Citiz +</title>
+
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+		<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+
+		<style type="text/css">
+			.popupinput {
+				width: 100px;
+			}
+
+			html {
+			  height: 100vh;
+			}
+
+			body {
+				overflow-x: hidden;
+				min-height: 100vh;
+			}
+
+			.popupname {
+				display: none;
+			}
+
+			#title, #counter {
+				text-align: center;
+			}
+
+			.col-sm-3 {
+				padding-right: 18px;
+			}
+
+			#list-div {
+				max-height: 900px;
+				overflow-y: auto;
+			}
+			
+			#mapid {
+				height: 100vh;
+			}
+		</style>
+
+</head>
+<body>
+
+
+<div class="row">
+	<div id="mapid" class="col-sm-9"></div>
+	<div class="col-sm-3">
+		<h1 id="title">Veuillez sélectionner un département</h1>
+		<h3 id="counter"></h3>
+		<div id="list-div">
+			<ul class="list-group" id="list"></ul>
+		</div>
+	</div>
+</div>
+<script>
+	String.prototype.replaceAll = function(search, replacement) {
+		var target = this;
+		return target.replace(new RegExp(search, 'g'), replacement);
+	};
+
+	String.prototype.simplify = function() {
+		var str = this;
+		if(str.substring(0,2) == "l'") str = str.substring(2);
+		if(str.substring(0,3) == "le " || str.substring(0,3) == "la ") str = str.substring(3);
+		if(str.substring(0,4) == "les ") str = str.substring(4);
+		return str.toLowerCase().replaceAll(" - ", " ").replaceAll("-"," ").replaceAll("à", "a").replaceAll("â", "a").replaceAll("ä", "a").replaceAll("é", "e").replaceAll("è", "e").replaceAll("ê", "e").replaceAll("ë", "e").replaceAll("î", "i").replaceAll("ï", "i").replaceAll("ô", "o").replaceAll("ö", "o").replaceAll("ù", "u").replaceAll("û", "u").replaceAll("ü", "u").replaceAll("ç", "c").replaceAll("ÿ", "y");
+	}
+
+	function depURL(code, name) {
+		var urledName = name.toLowerCase().simplify().replaceAll("'", "-").replaceAll(" ", "-");
+		return "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/" + code + "-" + urledName + "/communes-" + code + "-" + urledName + ".geojson";
+	}
+
+	var mymap = L.map('mapid').setView([48.864716, 2.349014], 8);
+	L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+		attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+		subdomains: 'abcd',
+		maxZoom: 19
+	}).addTo(mymap);
+
+	function cityColor(feature) {
+		if(foundCities["c" + feature.properties.code] == 1) {
+			return {
+				color: "#00aa77",
+				fillOpacity: 0.1
+			};
+		}
+		else {
+			return {
+				color: "#aaaaaa",
+				fillOpacity: 0.1
+			};
+		}
+
+	}
+
+	var foundCities;
+
+	var layerGroup = null;
+
+	function countFoundCities() {
+		return Object.values(foundCities).reduce(function(pv, cv) { return (cv == null)? parseInt(pv, 10) : parseInt(pv, 10) + parseInt(cv, 10); }, 0);
+	}
+
+ 	var totalCities = 0;
+
+	function refreshCounter() {
+		var count = countFoundCities();
+		$("#counter").text((count > 1)? count + " / " + totalCities + " villes trouvées" : count + " / " + totalCities + " ville trouvée");
+	}
+
+	function asc_sort(a, b){
+    return ($(b).text()) < ($(a).text()) ? 1 : -1;
+	}
+
+	function toHex(x) {
+		hexString = x.toString(16);
+		if (hexString.length % 2) {
+		  hexString = '0' + hexString;
+		}
+		return hexString;
+	}
+	
+	function updateDepColors() {
+		layerGroupDep.eachLayer(function(layera) {
+			var ratio;
+			if(departementCompletion["d" + layera.feature.properties.code] == undefined) {
+				ratio = 0;
+			}
+			else {
+				ratio = (1/Math.log(2))*Math.log(1 + parseFloat(departementCompletion["d" + layera.feature.properties.code]));
+			}
+			var color;
+			if(ratio == 1) {
+				color = "#ffff00";
+			}
+			else {
+				color = "#ff" + toHex(255 - Math.round(ratio * 255)) + toHex(255 - Math.round(ratio * 255));
+			}
+			layera.setStyle({
+				fillColor: color
+			});
+		});
+	}
+
+	function departement(code, name) {
+		$(".list-group-item").remove();
+		$("#title").text(name + " (" + code + ")");
+		foundCities = JSON.parse(localStorage.getItem(code));
+		if(foundCities == null) foundCities = {};
+		var url = depURL(code, name);
+		var jsonData;
+		if(layerGroup != null) mymap.removeLayer(layerGroup);
+		$.getJSON(url, function(data) {
+			jsonData = data;
+			totalCities = jsonData.features.length;
+			refreshCounter();
+			if(departementCompletion["d" + code] == null) {
+				departementCompletion["d" + code] = 0.0;
+			}
+			layerGroup = L.geoJSON(jsonData, {
+				style: cityColor,
+				onEachFeature: function (feature, layer) {
+					if(foundCities["c" + feature.properties.code] == 1) {
+						$("#list").append("<li class='list-group-item'>" + feature.properties.nom + "</li>");
+						$("#list li").sort(asc_sort).appendTo('#list');
+					}
+					layer.bindPopup("<div class='popup'><input type='text' class='popupinput'/><input type='button' value='Valider' class='popupbutton'/></div><span class='popupname'>"+feature.properties.nom+"</span>").on("popupopen", function(popup) {
+						if(foundCities["c" + feature.properties.code] == 1) {
+							$(".popup").hide();
+							$(".popupname").show();
+						}
+						else {
+							$(".popupinput").focus();
+							$(".popupbutton").click(function() {
+								if($(".popupinput").val().simplify() == $(".popupname").text().simplify()) {
+									//SUCCESS
+									foundCities["c" + feature.properties.code] = '1';
+									$("#list").append("<li class='list-group-item'>" + feature.properties.nom + "</li>");
+									$("#list li").sort(asc_sort).appendTo('#list');
+									refreshCounter();
+									departementCompletion["d" + code] = countFoundCities() / totalCities;
+									localStorage.setItem("depcomp", JSON.stringify(departementCompletion));
+									localStorage.setItem(code, JSON.stringify(foundCities));
+									layer.setStyle({
+										color: "#00aa77"
+									});
+									updateDepColors();
+									mymap.closePopup();
+								}
+								else {
+								}
+							});
+						}
+						$(".popupinput").keypress(function(e) {
+							if(e.keyCode == 13) {
+								$(".popupbutton").click();
+							}
+						});
+					});
+	  		}
+			}).addTo(mymap);
+		});
+	}
+
+	var layerGroupDep
+
+	var departementCompletion = JSON.parse(localStorage.getItem("depcomp"));
+	if(departementCompletion == null) departementCompletion = {};
+	$.getJSON("https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements.geojson", function(data) {
+		jsonData = data;
+		layerGroupDep = L.geoJSON(jsonData, {
+			style: function(feature) {
+				return {
+					color: "#555555"
+				};
+			},
+			onEachFeature: function(feature, layer) {
+				layer.on("click", function() {
+					departement(feature.properties.code, feature.properties.nom);
+				});
+			}
+		}).addTo(mymap);
+		updateDepColors();
+	});
+	/*$.getJSON("https://raw.githubusercontent.com/martynafford/natural-earth-geojson/master/10m/physical/ne_10m_rivers_europe.json", function(data) {
+		jsonData = data;
+		layerGroupDep = L.geoJSON(jsonData, {}).addTo(mymap);
+	});
+	$.getJSON("https://raw.githubusercontent.com/martynafford/natural-earth-geojson/master/10m/physical/ne_10m_rivers_lake_centerlines.json", function(data) {
+		jsonData = data;
+		layerGroupDep = L.geoJSON(jsonData, {}).addTo(mymap);
+	});*/
+
+</script>
+
+
+
+</body>
+</html>
