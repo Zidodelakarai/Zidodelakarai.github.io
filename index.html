@@ -77,7 +77,7 @@
 		if(str.substring(0,2) == "l'") str = str.substring(2);
 		if(str.substring(0,3) == "le " || str.substring(0,3) == "la ") str = str.substring(3);
 		if(str.substring(0,4) == "les ") str = str.substring(4);
-		return str.toLowerCase().replaceAll(" - ", " ").replaceAll("-"," ").replaceAll("(", "").replaceAll(")", "").replaceAll("à", "a").replaceAll("â", "a").replaceAll("ä", "a").replaceAll("é", "e").replaceAll("è", "e").replaceAll("ê", "e").replaceAll("ë", "e").replaceAll("î", "i").replaceAll("ï", "i").replaceAll("ô", "o").replaceAll("ö", "o").replaceAll("ù", "u").replaceAll("û", "u").replaceAll("ü", "u").replaceAll("ç", "c").replaceAll("ÿ", "y").replaceAll("œ","oe");
+		return str.toLowerCase().replaceAll(" - ", " ").replaceAll("-"," ").replaceAll("à", "a").replaceAll("â", "a").replaceAll("ä", "a").replaceAll("é", "e").replaceAll("è", "e").replaceAll("ê", "e").replaceAll("ë", "e").replaceAll("î", "i").replaceAll("ï", "i").replaceAll("ô", "o").replaceAll("ö", "o").replaceAll("ù", "u").replaceAll("û", "u").replaceAll("ü", "u").replaceAll("ç", "c").replaceAll("ÿ", "y").replaceAll("œ","oe");
 	}
 
 	function depURL(code, name) {
