@@ -86,7 +86,7 @@
 	}
 
 	var mymap = L.map('mapid').setView([48.864716, 2.349014], 8);
-	L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+	L.tileLayer('https://tiles.wmflabs.org/osm-no-labels/${z}/${x}/${y}.png', {
 		attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
 		subdomains: 'abcd',
 		maxZoom: 19
